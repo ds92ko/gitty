@@ -20,6 +20,22 @@ README Widget
 
 특정 commit이나 release 같은 개별 이벤트보다 **GitHub 잔디를 얼마나 꾸준히 심고 있는지**를 중심으로 현재 상태를 결정합니다.
 
+## Widget
+
+다음은 실제 GitHub 활동을 반영한 Gitty 위젯입니다.
+
+<p align="center">
+  <img src="https://gitty-widget.vercel.app/api/widget?username=ds92ko" alt="Gitty widget example" width="614" />
+</p>
+
+Gitty 위젯 URL에 GitHub username을 전달해 README에 추가할 수 있습니다.
+
+```md
+![Gitty](https://gitty-widget.vercel.app/api/widget?username=YOUR_USERNAME)
+```
+
+위젯은 Contribution Calendar를 분석해 결정된 현재 상태의 Gitty 이미지와 대사, 최근 7일 활동 기록, 상태 관련 정보를 함께 표시합니다.
+
 ## Contribution Data
 
 Gitty는 GitHub 프로필에 표시되는 Contribution Calendar를 기준으로 활동을 분석합니다.
@@ -29,22 +45,6 @@ Gitty는 GitHub 프로필에 표시되는 Contribution Calendar를 기준으로 
 - 비공개 contribution 표시를 끈 사용자는 공개 활동만 반영됩니다.
 - 비공개 contribution 표시를 켠 사용자는 익명화된 비공개 활동도 함께 반영됩니다.
 - 비공개 저장소의 이름이나 구체적인 활동 내용은 조회하거나 노출하지 않습니다.
-
-## Widget
-
-배포된 Gitty 위젯 URL에 GitHub username을 전달해 README에 추가할 수 있습니다.
-
-```md
-![Gitty](https://your-gitty-domain.com/api/widget?username=YOUR_USERNAME)
-```
-
-로컬에서는 다음 주소로 확인할 수 있습니다.
-
-```text
-http://localhost:3000/api/widget?username=YOUR_USERNAME
-```
-
-위젯은 Contribution Calendar를 분석해 결정된 현재 상태의 Gitty 이미지와 상태별 대사를 함께 표시합니다.
 
 ## State Flow
 
@@ -165,4 +165,10 @@ pnpm dev
 
 ```text
 http://localhost:3000
+```
+
+로컬 위젯은 다음 주소에서 확인할 수 있습니다.
+
+```text
+http://localhost:3000/api/widget?username=YOUR_USERNAME
 ```
