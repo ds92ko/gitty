@@ -50,45 +50,22 @@ Gitty는 GitHub 프로필에 표시되는 Contribution Calendar를 기준으로 
 
 Gitty의 기본 상태는 **오늘 활동 여부**에 따라 Positive와 Hunger로 나뉩니다.
 
-```text
-                         꾸준한 활동
-                             ↑
+```mermaid
+flowchart TB
+  today{"오늘 활동이 있나요?"}
 
-                            love
-                             ↑
-                           proud
-                             ↑
-                          excited
-                             ↑
-                         cheering
-                             ↑
-                           happy
-                             ↑
-                          coding
-                             ↑
-                          normal
-                             │
-                       오늘 활동 있음
+  subgraph positive["Positive"]
+    direction TB
+    normal --> coding --> happy --> cheering --> excited --> proud --> love
+  end
 
+  subgraph hunger["Hunger"]
+    direction TB
+    waiting --> nervous --> crying --> angry --> tired --> burned_out --> sleeping
+  end
 
-                       오늘 활동 없음
-                             │
-                          waiting
-                             ↓
-                          nervous
-                             ↓
-                          crying
-                             ↓
-                           angry
-                             ↓
-                           tired
-                             ↓
-                        burned_out
-                             ↓
-                         sleeping
-
-                             ↓
-                         장기 미활동
+  today -->|있음| normal
+  today -->|없음| waiting
 ```
 
 Positive는 최근 활동 빈도와 장기 지속성을 함께 반영하고, Hunger는 마지막 활동 이후 경과한 날짜를 기준으로 결정합니다.
