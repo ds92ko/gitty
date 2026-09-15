@@ -32,11 +32,18 @@ const POSITIVE_STATE_RANK: Partial<Record<WidgetCatState, number>> = {
   love: 6,
 };
 
-const MILESTONE_STATES = new Set<WidgetCatState>([
+const MILESTONE_STATES = [
   "excited",
   "proud",
   "love",
-]);
+] as const;
+export type CatStateMilestone = (typeof MILESTONE_STATES)[number];
+
+export interface CatStateDecision {
+  state: WidgetCatState;
+  milestone: CatStateMilestone | null;
+}
+
 const PEEKING_ACTIVITY_GAP_DAYS = 30;
 
 function meetsThreshold(
@@ -108,12 +115,21 @@ function determineHungerState(
   return "waiting";
 }
 
-export function determineCatState(
+function isMilestoneState(
+  state: WidgetCatState,
+): state is CatStateMilestone {
+  return MILESTONE_STATES.some((milestone) => milestone === state);
+}
+
+export function determineCatStateDecision(
   current: GitHubActivity,
   previous: GitHubActivity,
-): WidgetCatState {
+): CatStateDecision {
   if (!current.activeToday) {
-    return determineHungerState(current.daysSinceLastActivity);
+    return {
+      state: determineHungerState(current.daysSinceLastActivity),
+      milestone: null,
+    };
   }
 
   // Returning after a long absence takes priority over milestone celebrations.
@@ -121,7 +137,7 @@ export function determineCatState(
     current.previousActivityGap !== null &&
     current.previousActivityGap >= PEEKING_ACTIVITY_GAP_DAYS
   ) {
-    return "peeking";
+    return { state: "peeking", milestone: null };
   }
 
   const currentPositiveState = determinePositiveState(current);
@@ -130,11 +146,21 @@ export function determineCatState(
   const previousRank = POSITIVE_STATE_RANK[previousPositiveState] ?? 0;
 
   if (
-    MILESTONE_STATES.has(currentPositiveState) &&
+    isMilestoneState(currentPositiveState) &&
     currentRank > previousRank
   ) {
-    return "celebrating";
+    return {
+      state: "celebrating",
+      milestone: currentPositiveState,
+    };
   }
 
-  return currentPositiveState;
+  return { state: currentPositiveState, milestone: null };
+}
+
+export function determineCatState(
+  current: GitHubActivity,
+  previous: GitHubActivity,
+): WidgetCatState {
+  return determineCatStateDecision(current, previous).state;
 }

@@ -51,6 +51,20 @@ function countActiveDays(
   return count;
 }
 
+function getRecentDays(
+  activeDays: ReadonlySet<number>,
+  referenceDay: number,
+) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = referenceDay - 6 + index;
+
+    return {
+      date: new Date(day * DAY_IN_MILLISECONDS).toISOString().slice(0, 10),
+      active: activeDays.has(day),
+    };
+  });
+}
+
 export function analyzeGitHubActivity(
   calendar: ContributionCalendar,
   referenceDate = new Date(),
@@ -89,5 +103,6 @@ export function analyzeGitHubActivity(
       activeDays.has(referenceDay) && previousActiveDay !== null
         ? referenceDay - previousActiveDay
         : null,
+    recentDays7: getRecentDays(activeDays, referenceDay),
   };
 }

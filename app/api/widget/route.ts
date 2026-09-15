@@ -2,7 +2,11 @@ import { fetchContributionCalendar } from "@/lib/github/fetch-contribution-calen
 import { parseContributionCalendar } from "@/lib/github/parse-contribution-calendar";
 import { analyzeGitHubActivity } from "@/lib/gitty/analyze-github-activity";
 import type { WidgetCatState } from "@/lib/gitty/cat-message";
-import { determineCatState } from "@/lib/gitty/determine-cat-state";
+import {
+  determineCatStateDecision,
+  type CatStateMilestone,
+} from "@/lib/gitty/determine-cat-state";
+import type { GitHubActivity } from "@/lib/gitty/github-activity";
 import { renderWidget } from "@/lib/gitty/render-widget";
 
 const WIDGET_CACHE_CONTROL =
@@ -16,8 +20,23 @@ function isValidGitHubUsername(value: string | null): value is string {
   return value !== null && GITHUB_USERNAME_PATTERN.test(value);
 }
 
-async function createWidgetResponse(state: WidgetCatState) {
-  const svg = await renderWidget(state);
+async function createWidgetResponse({
+  state,
+  username,
+  activity,
+  milestone,
+}: {
+  state: WidgetCatState;
+  username?: string;
+  activity?: GitHubActivity;
+  milestone?: CatStateMilestone | null;
+}) {
+  const svg = await renderWidget({
+    state,
+    username,
+    activity,
+    milestone,
+  });
 
   return new Response(svg, {
     headers: {
@@ -33,12 +52,20 @@ async function createWidgetResponse(state: WidgetCatState) {
 
 export async function GET(request: Request) {
   const username = new URL(request.url).searchParams.get("username");
+  const validUsername = isValidGitHubUsername(username)
+    ? username
+    : undefined;
   let state: WidgetCatState = "confused";
+  let activity: GitHubActivity | undefined;
+  let milestone: CatStateMilestone | null = null;
 
-  if (isValidGitHubUsername(username)) {
+  if (validUsername) {
     try {
       const now = new Date();
-      const response = await fetchContributionCalendar(username, now);
+      const response = await fetchContributionCalendar(
+        validUsername,
+        now,
+      );
       const calendar = parseContributionCalendar(response);
       const currentActivity = analyzeGitHubActivity(calendar, now);
       const previousDate = new Date(now);
@@ -49,12 +76,23 @@ export async function GET(request: Request) {
         calendar,
         previousDate,
       );
+      const decision = determineCatStateDecision(
+        currentActivity,
+        previousActivity,
+      );
 
-      state = determineCatState(currentActivity, previousActivity);
+      state = decision.state;
+      milestone = decision.milestone;
+      activity = currentActivity;
     } catch {
       state = "confused";
     }
   }
 
-  return createWidgetResponse(state);
+  return createWidgetResponse({
+    state,
+    username: validUsername,
+    activity,
+    milestone,
+  });
 }

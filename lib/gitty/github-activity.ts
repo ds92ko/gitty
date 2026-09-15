@@ -1,3 +1,8 @@
+export interface GitHubActivityDay {
+  date: string;
+  active: boolean;
+}
+
 export interface GitHubActivity {
   activeToday: boolean;
   activeDays7: number;
@@ -6,4 +11,5 @@ export interface GitHubActivity {
   activeDays180: number;
   daysSinceLastActivity: number;
   previousActivityGap: number | null;
+  recentDays7: GitHubActivityDay[];
 }
