@@ -494,21 +494,24 @@ function CheckIcon() {
 interface UsernameFormProps {
   id: string;
   username: string;
+  invalid: boolean;
   onUsernameChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  error?: string | null;
 }
 
 function UsernameForm({
   id,
   username,
+  invalid,
   onUsernameChange,
   onSubmit,
-  error,
 }: UsernameFormProps) {
   return (
     <div className="username-block">
-      <form className="username-form" onSubmit={onSubmit}>
+      <form
+        className={`username-form${invalid ? " is-invalid" : ""}`}
+        onSubmit={onSubmit}
+      >
         <label className="sr-only" htmlFor={id}>
           GitHub username
         </label>
@@ -522,16 +525,12 @@ function UsernameForm({
           placeholder="GitHub username"
           autoComplete="off"
           spellCheck={false}
+          aria-invalid={invalid}
         />
         <button type="submit">
           만나기
         </button>
       </form>
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -558,6 +557,46 @@ export function GittyLanding() {
         clearTimeout(copyTimer.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const revealElements =
+      document.querySelectorAll<HTMLElement>("[data-section-reveal]");
+    const reducedMotionQuery = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+
+    if (reducedMotionQuery.matches) {
+      revealElements.forEach((element) => {
+        element.classList.add("is-visible");
+      });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            entry.target.classList.remove("is-visible");
+            return;
+          }
+
+          if (entry.intersectionRatio >= 0.35) {
+            entry.target.classList.add("is-visible");
+          }
+        });
+      },
+      {
+        threshold: [0, 0.35],
+        rootMargin: "0px 0px -12% 0px",
+      },
+    );
+
+    revealElements.forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -666,14 +705,16 @@ export function GittyLanding() {
     const section = meetSectionRef.current;
     const hungerTrack = hungerTrackRef.current;
     const positiveTrack = positiveTrackRef.current;
+    const moodColumns = hungerTrack?.closest<HTMLElement>(".mood-columns");
 
-    if (!section || !hungerTrack || !positiveTrack) {
+    if (!section || !hungerTrack || !positiveTrack || !moodColumns) {
       return;
     }
 
     const sectionElement = section;
     const hungerTrackElement = hungerTrack;
     const positiveTrackElement = positiveTrack;
+    const moodColumnsElement = moodColumns;
     const reducedMotionQuery = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     );
@@ -709,6 +750,18 @@ export function GittyLanding() {
 
     function drawTracks() {
       frameId = null;
+      const sectionTop = sectionElement.getBoundingClientRect().top;
+      const revealProgress = reducedMotionQuery.matches
+        ? 1
+        : Math.min(
+            1,
+            Math.max(
+              0,
+              1 - sectionTop / (window.innerHeight * 0.5),
+            ),
+          );
+
+      moodColumnsElement.style.opacity = String(revealProgress);
 
       if (reducedMotionQuery.matches) {
         resetTracks();
@@ -719,13 +772,51 @@ export function GittyLanding() {
         (sectionElement.offsetHeight - window.innerHeight) * 0.86,
         1,
       );
-      const progress = Math.min(
-        1,
-        Math.max(
-          0,
-          -sectionElement.getBoundingClientRect().top / scrollDistance,
-        ),
+      const scrollBeforeFinalSection = Math.max(
+        sectionElement.offsetHeight - window.innerHeight * 2,
+        0,
       );
+      const scrollOffset = Math.min(
+        scrollBeforeFinalSection,
+        Math.max(0, -sectionElement.getBoundingClientRect().top),
+      );
+      const maxProgress = Math.min(
+        1,
+        scrollBeforeFinalSection / scrollDistance,
+      );
+      const progress = Math.min(maxProgress, scrollOffset / scrollDistance);
+
+      function getStaggerCorrection(
+        hungerTravel: number,
+        positiveTravel: number,
+        positiveStagger: number,
+      ) {
+        if (!trackStep || !maxProgress) {
+          return 0;
+        }
+
+        const relativePositionAtStop =
+          -positiveTravel +
+          positiveStagger +
+          (positiveTravel + hungerTravel) * maxProgress;
+        const currentPhase =
+          ((relativePositionAtStop % trackStep) + trackStep) % trackStep;
+        let correction = trackStep / 2 - currentPhase;
+
+        if (correction > trackStep / 2) {
+          correction -= trackStep;
+        } else if (correction < -trackStep / 2) {
+          correction += trackStep;
+        }
+
+        const correctionProgress = Math.min(1, progress / maxProgress);
+        const easedProgress =
+          correctionProgress *
+          correctionProgress *
+          (3 - 2 * correctionProgress);
+
+        return correction * easedProgress;
+      }
 
       if (mobileLayoutQuery.matches) {
         const hungerViewportWidth =
@@ -743,9 +834,14 @@ export function GittyLanding() {
         const positiveStagger = trackStep
           ? (positiveTravel + trackStep / 2) % trackStep
           : 0;
+        const staggerCorrection = getStaggerCorrection(
+          hungerTravel,
+          positiveTravel,
+          positiveStagger,
+        );
 
         hungerTrackElement.style.transform = `translate3d(${trackInset - hungerTravel * progress}px, 0, 0)`;
-        positiveTrackElement.style.transform = `translate3d(${trackInset - positiveTravel * (1 - progress) + positiveStagger}px, 0, 0)`;
+        positiveTrackElement.style.transform = `translate3d(${trackInset - positiveTravel * (1 - progress) + positiveStagger + staggerCorrection}px, 0, 0)`;
         return;
       }
 
@@ -764,9 +860,14 @@ export function GittyLanding() {
       const positiveStagger = trackStep
         ? (positiveTravel + trackStep / 2) % trackStep
         : 0;
+      const staggerCorrection = getStaggerCorrection(
+        hungerTravel,
+        positiveTravel,
+        positiveStagger,
+      );
 
       hungerTrackElement.style.transform = `translate3d(0, ${trackInset - hungerTravel * progress}px, 0)`;
-      positiveTrackElement.style.transform = `translate3d(0, ${trackInset - positiveTravel * (1 - progress) + positiveStagger}px, 0)`;
+      positiveTrackElement.style.transform = `translate3d(0, ${trackInset - positiveTravel * (1 - progress) + positiveStagger + staggerCorrection}px, 0)`;
     }
 
     function updateTracks() {
@@ -792,20 +893,27 @@ export function GittyLanding() {
       }
 
       resetTracks();
+      moodColumnsElement.style.removeProperty("opacity");
     };
   }, []);
 
   useEffect(() => {
     const section = worksSectionRef.current;
+    const storyFlow =
+      section?.querySelector<HTMLElement>(".story-flow");
     const steps = storyStepRefs.current.filter(
       (step): step is HTMLElement => step !== null,
     );
 
-    if (!section || steps.length === 0) {
+    if (!section || !storyFlow || steps.length === 0) {
       return;
     }
 
     const sectionElement = section;
+    const storyFlowElement = storyFlow;
+    const reducedMotionQuery = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
     const staticLayoutQuery = window.matchMedia(
       "(max-width: 900px), (prefers-reduced-motion: reduce)",
     );
@@ -856,12 +964,24 @@ export function GittyLanding() {
     }
 
     function updateProgress() {
+      const sectionTop = sectionElement.getBoundingClientRect().top;
+      const revealProgress = reducedMotionQuery.matches
+        ? 1
+        : Math.min(
+            1,
+            Math.max(
+              0,
+              1 - sectionTop / (window.innerHeight * 0.5),
+            ),
+          );
+
+      storyFlowElement.style.opacity = String(revealProgress);
+
       if (staticLayoutQuery.matches) {
         resetSteps();
         return;
       }
 
-      const sectionTop = sectionElement.getBoundingClientRect().top;
       const scrollDistance = Math.max(
         sectionElement.offsetHeight - window.innerHeight,
         1,
@@ -908,6 +1028,7 @@ export function GittyLanding() {
       }
 
       resetSteps();
+      storyFlowElement.style.removeProperty("opacity");
     };
   }, []);
 
@@ -915,13 +1036,43 @@ export function GittyLanding() {
     ? `${WIDGET_ORIGIN}/api/widget?username=${encodeURIComponent(activeUsername)}`
     : null;
   const markdown = widgetUrl ? `![Gitty](${widgetUrl})` : "";
+  const hasValidUsername = GITHUB_USERNAME_PATTERN.test(username.trim());
+
+  function handleUsernameChange(value: string) {
+    setUsername(value);
+    setActiveUsername(null);
+    setCopied(false);
+    const normalizedUsername = value.trim();
+
+    if (!normalizedUsername) {
+      setError(null);
+      return;
+    }
+
+    if (!GITHUB_USERNAME_PATTERN.test(normalizedUsername)) {
+      setError("GitHub username을 다시 확인해 보라냥");
+      return;
+    }
+
+    setError(null);
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedUsername = username.trim();
 
+    if (!normalizedUsername) {
+      setUsername("");
+      setActiveUsername(null);
+      setError(null);
+      setCopied(false);
+      return;
+    }
+
     if (!GITHUB_USERNAME_PATTERN.test(normalizedUsername)) {
-      setError("올바른 GitHub username을 입력해 주세요.");
+      setActiveUsername(null);
+      setError("GitHub username을 다시 확인해 보라냥");
+      setCopied(false);
       return;
     }
 
@@ -973,7 +1124,10 @@ export function GittyLanding() {
       </header>
 
       <main>
-        <section className="hero-section">
+        <section
+          className="hero-section"
+          data-section-reveal
+        >
           <div className="hero-copy">
             <p className="eyebrow">YOUR GITHUB PET</p>
             <h1>GitHub 활동을 먹고 자라는 고양이, Gitty</h1>
@@ -985,9 +1139,9 @@ export function GittyLanding() {
           <UsernameForm
             id="hero-username"
             username={username}
-            onUsernameChange={setUsername}
+            invalid={Boolean(error)}
+            onUsernameChange={handleUsernameChange}
             onSubmit={handleSubmit}
-            error={error}
           />
 
           <div className="hero-stage" aria-live="polite">
@@ -1018,23 +1172,50 @@ export function GittyLanding() {
                 </div>
               </div>
             ) : (
-              <div className="initial-gitty" ref={initialGittyRef}>
-                <div className="initial-pet-scene">
-                  <Image
-                    className="idle-gitty"
-                    src="/cats/waiting.png"
-                    alt="집사를 기다리는 Gitty"
-                    width={300}
-                    height={300}
-                    priority
-                  />
-                  <Image
-                    className="hero-bowl"
-                    src="/activity/bowl_empty.png"
-                    alt="빈 밥그릇"
-                    width={78}
-                    height={54}
-                  />
+              <div className="initial-state">
+                <p
+                  className="form-error"
+                  role={error ? "alert" : undefined}
+                  aria-hidden={!error}
+                >
+                  {error ?? "\u00A0"}
+                </p>
+                <div className="initial-gitty" ref={initialGittyRef}>
+                  <div className="initial-pet-scene">
+                    <Image
+                      className="idle-gitty"
+                    src={
+                      error
+                        ? "/cats/confused.png"
+                        : hasValidUsername
+                          ? "/cats/happy.png"
+                          : "/cats/waiting.png"
+                    }
+                      alt={
+                        error
+                          ? "입력값을 이해하지 못한 Gitty"
+                        : hasValidUsername
+                          ? "입력값을 반기는 Gitty"
+                          : "집사를 기다리는 Gitty"
+                      }
+                      width={300}
+                      height={300}
+                      priority
+                    />
+                    {!error ? (
+                      <Image
+                        className="hero-bowl"
+                        src={
+                          hasValidUsername
+                            ? "/activity/bowl_full.png"
+                            : "/activity/bowl_empty.png"
+                        }
+                        alt={hasValidUsername ? "가득 찬 밥그릇" : "빈 밥그릇"}
+                        width={128}
+                        height={90}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </div>
             )}
@@ -1062,7 +1243,10 @@ export function GittyLanding() {
                 />
               ))}
             </div>
-            <div className="section-heading">
+            <div
+              className="section-heading section-reveal"
+              data-section-reveal
+            >
               <p className="eyebrow">HOW GITTY WORKS</p>
               <h2>Gitty는 이렇게 자라요</h2>
             </div>
@@ -1116,14 +1300,14 @@ export function GittyLanding() {
                 </div>
               <div className="mood-visual" aria-hidden="true">
                 <Image
-                  src="/cats/waiting.png"
-                  alt="waiting Gitty"
+                  src="/cats/angry.png"
+                  alt="angry Gitty"
                   width={208}
                   height={208}
                 />
                 <Image
-                  src="/cats/happy.png"
-                  alt="happy Gitty"
+                  src="/cats/proud.png"
+                  alt="proud Gitty"
                   width={208}
                   height={208}
                 />
@@ -1159,7 +1343,7 @@ export function GittyLanding() {
                 </div>
                 <div className="readme-widget">
                   <Image
-                    src="/cats/happy.png"
+                    src="/cats/cheering.png"
                     alt=""
                     width={72}
                     height={72}
@@ -1179,7 +1363,10 @@ export function GittyLanding() {
         <section className="meet-section" ref={meetSectionRef}>
           <div className="meet-sticky">
             <div className="meet-layout">
-              <div className="section-heading meet-copy">
+              <div
+                className="section-heading meet-copy section-reveal"
+                data-section-reveal
+              >
                 <p className="eyebrow">MEET GITTY</p>
                 <h2>
                   툴툴대고 까칠한 녀석,
@@ -1225,7 +1412,10 @@ export function GittyLanding() {
         <section className="final-section">
           <FinalGrassCanvas />
           <div className="final-content">
-            <div className="final-copy">
+            <div
+              className="final-copy section-reveal"
+              data-section-reveal
+            >
               <h2>이제, Gitty의 집사가 되어보세요.</h2>
               <p>Gitty와 함께 GitHub 활동을 꾸준히 이어가 보세요.</p>
               <a
