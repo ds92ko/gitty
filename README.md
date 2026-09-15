@@ -1,5 +1,9 @@
 # Gitty
 
+<p align="center">
+  <img src="./public/brand/logo.png" alt="Gitty logo" width="520" />
+</p>
+
 Gitty는 GitHub 활동에 따라 상태와 감정이 변하는 고양이를 README에 표시하는 서비스입니다.
 
 GitHub 사용자는 Gitty를 돌보는 **집사**입니다. Gitty는 **GitHub 활동을 먹고 자랍니다.** 집사가 꾸준히 활동하면 점점 행복해지고, 활동이 끊기면 기다리고, 지치고, 결국 잠들게 됩니다.
