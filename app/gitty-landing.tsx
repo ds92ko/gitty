@@ -1,9 +1,11 @@
 "use client";
 
+import { CAT_STATE_MESSAGES } from "@/lib/gitty/cat-message";
 import Lenis from "lenis";
 import Image from "next/image";
 import {
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
@@ -34,6 +36,30 @@ const HUNGER_MARQUEE_STATES = [
   "burned_out",
   "sleeping",
 ] as const;
+
+type MoodState =
+  | (typeof POSITIVE_MARQUEE_STATES)[number]
+  | (typeof HUNGER_MARQUEE_STATES)[number];
+
+function addMoodTrackSentinels<T extends MoodState>(
+  states: readonly T[],
+) {
+  const first = states[0];
+  const last = states.at(-1);
+
+  if (!first || !last) {
+    return [];
+  }
+
+  return [last, ...states, first];
+}
+
+const POSITIVE_TRACK_STATES = addMoodTrackSentinels(
+  POSITIVE_MARQUEE_STATES,
+);
+const HUNGER_TRACK_STATES = addMoodTrackSentinels(
+  HUNGER_MARQUEE_STATES,
+);
 
 const COMMIT_RAIN_TILES = [
   { left: 4, size: 14, duration: 15, delay: -3, level: 1 },
@@ -556,6 +582,67 @@ export function GittyLanding() {
   const meetSectionRef = useRef<HTMLElement>(null);
   const hungerTrackRef = useRef<HTMLDivElement>(null);
   const positiveTrackRef = useRef<HTMLDivElement>(null);
+  const moodTooltipRef = useRef<HTMLDivElement>(null);
+  const [moodTooltip, setMoodTooltip] = useState<{
+    state: MoodState;
+    visible: boolean;
+  }>({
+    state: "normal",
+    visible: false,
+  });
+
+  function positionMoodTooltip(clientX: number, clientY: number) {
+    const tooltip = moodTooltipRef.current;
+
+    if (!tooltip) {
+      return;
+    }
+
+    const bubble = tooltip.firstElementChild as HTMLElement | null;
+    const bubbleWidth = bubble?.offsetWidth ?? 0;
+    const bubbleHeight = bubble?.offsetHeight ?? 0;
+    const gap = 16;
+    const viewportPadding = 16;
+    const left = Math.min(
+      Math.max(viewportPadding, clientX - bubbleWidth / 2),
+      window.innerWidth - bubbleWidth - viewportPadding,
+    );
+    const top = Math.max(
+      viewportPadding,
+      clientY - bubbleHeight - gap,
+    );
+
+    tooltip.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  }
+
+  function handleMoodPointerEnter(
+    event: ReactPointerEvent<HTMLImageElement>,
+    state: MoodState,
+  ) {
+    if (event.pointerType !== "mouse") {
+      return;
+    }
+
+    const { clientX, clientY } = event;
+    setMoodTooltip({ state, visible: true });
+    requestAnimationFrame(() => positionMoodTooltip(clientX, clientY));
+  }
+
+  function handleMoodPointerMove(
+    event: ReactPointerEvent<HTMLImageElement>,
+  ) {
+    if (event.pointerType === "mouse") {
+      positionMoodTooltip(event.clientX, event.clientY);
+    }
+  }
+
+  function handleMoodPointerLeave(
+    event: ReactPointerEvent<HTMLImageElement>,
+  ) {
+    if (event.pointerType === "mouse") {
+      setMoodTooltip((current) => ({ ...current, visible: false }));
+    }
+  }
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -739,7 +826,7 @@ export function GittyLanding() {
     const horizontalLayoutQuery = window.matchMedia("(max-width: 900px)");
     let frameId: number | null = null;
     let trackStep = 0;
-    let trackInset = 36;
+    let trackInset = 0;
 
     function resetTracks() {
       hungerTrackElement.style.removeProperty("transform");
@@ -760,9 +847,13 @@ export function GittyLanding() {
       const itemSize = horizontalLayoutQuery.matches
         ? firstPositiveItem.offsetWidth
         : firstPositiveItem.offsetHeight;
+      const viewportSize = horizontalLayoutQuery.matches
+        ? (positiveTrackElement.parentElement?.clientWidth ?? 0)
+        : (positiveTrackElement.parentElement?.clientHeight ?? 0);
+      const maskFadeRatio = horizontalLayoutQuery.matches ? 0.07 : 0.09;
 
       trackStep = itemSize + gap;
-      trackInset = horizontalLayoutQuery.matches ? 24 : 36;
+      trackInset = Math.ceil(viewportSize * maskFadeRatio) + 8;
       updateTracks();
     }
 
@@ -786,10 +877,6 @@ export function GittyLanding() {
         return;
       }
 
-      const scrollDistance = Math.max(
-        (sectionElement.offsetHeight - window.innerHeight) * 0.86,
-        1,
-      );
       const scrollBeforeFinalSection = Math.max(
         sectionElement.offsetHeight - window.innerHeight * 2,
         0,
@@ -798,42 +885,35 @@ export function GittyLanding() {
         scrollBeforeFinalSection,
         Math.max(0, -sectionElement.getBoundingClientRect().top),
       );
-      const maxProgress = Math.min(
-        1,
-        scrollBeforeFinalSection / scrollDistance,
-      );
-      const progress = Math.min(maxProgress, scrollOffset / scrollDistance);
+      const progress = scrollBeforeFinalSection
+        ? scrollOffset / scrollBeforeFinalSection
+        : 0;
 
-      function getStaggerCorrection(
-        hungerTravel: number,
-        positiveTravel: number,
-        positiveStagger: number,
-      ) {
-        if (!trackStep || !maxProgress) {
+      function getHalfStepCorrection(relativePosition: number) {
+        if (!trackStep) {
           return 0;
         }
 
-        const relativePositionAtStop =
-          -positiveTravel +
-          positiveStagger +
-          (positiveTravel + hungerTravel) * maxProgress;
         const currentPhase =
-          ((relativePositionAtStop % trackStep) + trackStep) % trackStep;
-        let correction = trackStep / 2 - currentPhase;
+          ((relativePosition % trackStep) + trackStep) % trackStep;
+        return trackStep / 2 - currentPhase;
+      }
 
-        if (correction > trackStep / 2) {
-          correction -= trackStep;
-        } else if (correction < -trackStep / 2) {
-          correction += trackStep;
-        }
+      function getPositivePosition(
+        hungerTravel: number,
+        positiveTravel: number,
+      ) {
+        const start =
+          trackInset -
+          trackStep -
+          positiveTravel +
+          getHalfStepCorrection(-positiveTravel);
+        const end =
+          trackInset -
+          trackStep +
+          getHalfStepCorrection(hungerTravel);
 
-        const correctionProgress = Math.min(1, progress / maxProgress);
-        const easedProgress =
-          correctionProgress *
-          correctionProgress *
-          (3 - 2 * correctionProgress);
-
-        return correction * easedProgress;
+        return start + (end - start) * progress;
       }
 
       if (horizontalLayoutQuery.matches) {
@@ -842,24 +922,22 @@ export function GittyLanding() {
         const positiveViewportWidth =
           positiveTrackElement.parentElement?.clientWidth ?? 0;
         const hungerTravel = Math.max(
-          hungerTrackElement.scrollWidth - hungerViewportWidth,
+          hungerTrackElement.scrollWidth -
+            trackStep * 2 -
+            hungerViewportWidth +
+            trackInset * 2,
           0,
         );
         const positiveTravel = Math.max(
-          positiveTrackElement.scrollWidth - positiveViewportWidth,
+          positiveTrackElement.scrollWidth -
+            trackStep * 2 -
+            positiveViewportWidth +
+            trackInset * 2,
           0,
         );
-        const positiveStagger = trackStep
-          ? (positiveTravel + trackStep / 2) % trackStep
-          : 0;
-        const staggerCorrection = getStaggerCorrection(
-          hungerTravel,
-          positiveTravel,
-          positiveStagger,
-        );
 
-        hungerTrackElement.style.transform = `translate3d(${trackInset - hungerTravel * progress}px, 0, 0)`;
-        positiveTrackElement.style.transform = `translate3d(${trackInset - positiveTravel * (1 - progress) + positiveStagger + staggerCorrection}px, 0, 0)`;
+        hungerTrackElement.style.transform = `translate3d(${trackInset - trackStep - hungerTravel * progress}px, 0, 0)`;
+        positiveTrackElement.style.transform = `translate3d(${getPositivePosition(hungerTravel, positiveTravel)}px, 0, 0)`;
         return;
       }
 
@@ -868,24 +946,22 @@ export function GittyLanding() {
       const positiveViewportHeight =
         positiveTrackElement.parentElement?.clientHeight ?? 0;
       const hungerTravel = Math.max(
-        hungerTrackElement.scrollHeight - hungerViewportHeight,
+        hungerTrackElement.scrollHeight -
+          trackStep * 2 -
+          hungerViewportHeight +
+          trackInset * 2,
         0,
       );
       const positiveTravel = Math.max(
-        positiveTrackElement.scrollHeight - positiveViewportHeight,
+        positiveTrackElement.scrollHeight -
+          trackStep * 2 -
+          positiveViewportHeight +
+          trackInset * 2,
         0,
       );
-      const positiveStagger = trackStep
-        ? (positiveTravel + trackStep / 2) % trackStep
-        : 0;
-      const staggerCorrection = getStaggerCorrection(
-        hungerTravel,
-        positiveTravel,
-        positiveStagger,
-      );
 
-      hungerTrackElement.style.transform = `translate3d(0, ${trackInset - hungerTravel * progress}px, 0)`;
-      positiveTrackElement.style.transform = `translate3d(0, ${trackInset - positiveTravel * (1 - progress) + positiveStagger + staggerCorrection}px, 0)`;
+      hungerTrackElement.style.transform = `translate3d(0, ${trackInset - trackStep - hungerTravel * progress}px, 0)`;
+      positiveTrackElement.style.transform = `translate3d(0, ${getPositivePosition(hungerTravel, positiveTravel)}px, 0)`;
     }
 
     function updateTracks() {
@@ -1421,15 +1497,28 @@ export function GittyLanding() {
               <div className="mood-columns">
                 <div className="mood-column">
                   <div className="mood-track hunger-track" ref={hungerTrackRef}>
-                    {HUNGER_MARQUEE_STATES.map((state) => (
-                      <Image
-                        key={state}
-                        src={`/cats/${state}.png`}
-                        alt={`${state} Gitty`}
-                        width={260}
-                        height={260}
-                      />
-                    ))}
+                    {HUNGER_TRACK_STATES.map((state, index) => {
+                      const isSentinel =
+                        index === 0 ||
+                        index === HUNGER_TRACK_STATES.length - 1;
+
+                      return (
+                        <Image
+                          key={`${state}-${index}`}
+                          src={`/cats/${state}.png`}
+                          alt={isSentinel ? "" : `${state} Gitty`}
+                          data-mood-state={state}
+                          data-mood-sentinel={isSentinel ? "" : undefined}
+                          width={260}
+                          height={260}
+                          onPointerEnter={(event) =>
+                            handleMoodPointerEnter(event, state)
+                          }
+                          onPointerMove={handleMoodPointerMove}
+                          onPointerLeave={handleMoodPointerLeave}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="mood-column">
@@ -1437,21 +1526,46 @@ export function GittyLanding() {
                     className="mood-track positive-track"
                     ref={positiveTrackRef}
                   >
-                    {POSITIVE_MARQUEE_STATES.map((state) => (
-                      <Image
-                        key={state}
-                        src={`/cats/${state}.png`}
-                        alt={`${state} Gitty`}
-                        width={260}
-                        height={260}
-                      />
-                    ))}
+                    {POSITIVE_TRACK_STATES.map((state, index) => {
+                      const isSentinel =
+                        index === 0 ||
+                        index === POSITIVE_TRACK_STATES.length - 1;
+
+                      return (
+                        <Image
+                          key={`${state}-${index}`}
+                          src={`/cats/${state}.png`}
+                          alt={isSentinel ? "" : `${state} Gitty`}
+                          data-mood-state={state}
+                          data-mood-sentinel={isSentinel ? "" : undefined}
+                          width={260}
+                          height={260}
+                          onPointerEnter={(event) =>
+                            handleMoodPointerEnter(event, state)
+                          }
+                          onPointerMove={handleMoodPointerMove}
+                          onPointerLeave={handleMoodPointerLeave}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        <div
+          className="mood-tooltip"
+          ref={moodTooltipRef}
+          aria-hidden="true"
+        >
+          <span
+            className={`mood-tooltip-bubble${moodTooltip.visible ? " is-visible" : ""}`}
+          >
+            {CAT_STATE_MESSAGES[moodTooltip.state]}
+          </span>
+        </div>
 
         <section className="final-section">
           <FinalGrassCanvas />

@@ -29,6 +29,7 @@
   --card-background-primary: rgba(251, 252, 254, 0.7);
   --card-background-secondary: rgba(246, 248, 250, 0.7);
   --card-background-tertiary: rgba(243, 251, 245, 0.7);
+  --tooltip-background: rgba(36, 41, 47, 0.82);
   --footer-background: rgba(255, 255, 255, 0.74);
   --shadow-soft: rgba(31, 35, 40, 0.06);
   --shadow-medium: rgba(31, 35, 40, 0.08);
@@ -913,67 +914,113 @@ img {
   transition: transform 180ms ease;
 }
 
-.mood-track img:nth-child(even) {
+.mood-track img[data-mood-state="nervous"],
+.mood-track img[data-mood-state="angry"],
+.mood-track img[data-mood-state="burned_out"],
+.mood-track img[data-mood-state="coding"],
+.mood-track img[data-mood-state="cheering"],
+.mood-track img[data-mood-state="proud"] {
   animation-direction: reverse;
 }
 
-.hunger-track img:nth-child(1) {
+.hunger-track img[data-mood-state="waiting"] {
   animation-delay: -200ms;
 }
 
-.hunger-track img:nth-child(2) {
+.hunger-track img[data-mood-state="nervous"] {
   animation-delay: -1800ms;
 }
 
-.hunger-track img:nth-child(3) {
+.hunger-track img[data-mood-state="crying"] {
   animation-delay: -800ms;
 }
 
-.hunger-track img:nth-child(4) {
+.hunger-track img[data-mood-state="angry"] {
   animation-delay: -3200ms;
 }
 
-.hunger-track img:nth-child(5) {
+.hunger-track img[data-mood-state="tired"] {
   animation-delay: -2400ms;
 }
 
-.hunger-track img:nth-child(6) {
+.hunger-track img[data-mood-state="burned_out"] {
   animation-delay: -400ms;
 }
 
-.hunger-track img:nth-child(7) {
+.hunger-track img[data-mood-state="sleeping"] {
   animation-delay: -2800ms;
 }
 
-.positive-track img:nth-child(1) {
+.positive-track img[data-mood-state="normal"] {
   animation-delay: -1400ms;
 }
 
-.positive-track img:nth-child(2) {
+.positive-track img[data-mood-state="coding"] {
   animation-delay: -3000ms;
 }
 
-.positive-track img:nth-child(3) {
+.positive-track img[data-mood-state="happy"] {
   animation-delay: -200ms;
 }
 
-.positive-track img:nth-child(4) {
+.positive-track img[data-mood-state="cheering"] {
   animation-delay: -2200ms;
 }
 
-.positive-track img:nth-child(5) {
+.positive-track img[data-mood-state="excited"] {
   animation-delay: -3600ms;
 }
 
-.positive-track img:nth-child(6) {
+.positive-track img[data-mood-state="proud"] {
   animation-delay: -1000ms;
 }
 
-.positive-track img:nth-child(7) {
+.positive-track img[data-mood-state="love"] {
   animation-delay: -2600ms;
 }
 
+.mood-tooltip {
+  position: fixed;
+  z-index: 40;
+  top: 0;
+  left: 0;
+  display: none;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.mood-tooltip-bubble {
+  display: block;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--foreground-hover);
+  border-radius: var(--radius-control);
+  background: var(--tooltip-background);
+  box-shadow: 0 8px 24px var(--shadow-medium);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.mood-tooltip-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 @media (hover: hover) and (pointer: fine) {
+  .mood-tooltip {
+    display: block;
+  }
+
   .mood-track img:hover {
     animation-play-state: paused;
     transform: scale(1.06);
@@ -1448,6 +1495,10 @@ img {
     transform: none !important;
   }
 
+  .mood-track img[data-mood-sentinel] {
+    display: none;
+  }
+
   .idle-gitty,
   .commit-rain-tile,
   .contribution-dots i,
@@ -1487,7 +1538,8 @@ img {
   }
 
   .idle-gitty,
-  .hero-bowl {
+  .hero-bowl,
+  .mood-tooltip-bubble {
     transform: none;
     transition: none;
   }
