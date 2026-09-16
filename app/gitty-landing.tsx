@@ -1,5 +1,6 @@
 "use client";
 
+import Lenis from "lenis";
 import Image from "next/image";
 import {
   type FormEvent,
@@ -555,6 +556,18 @@ export function GittyLanding() {
   const meetSectionRef = useRef<HTMLElement>(null);
   const hungerTrackRef = useRef<HTMLDivElement>(null);
   const positiveTrackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const lenis = new Lenis({
+      autoRaf: true,
+      lerp: 0.08,
+      respectReducedMotion: true,
+      smoothWheel: true,
+      syncTouch: false,
+    });
+
+    return () => lenis.destroy();
+  }, []);
 
   useEffect(() => {
     return () => {
