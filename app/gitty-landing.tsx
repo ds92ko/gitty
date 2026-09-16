@@ -57,14 +57,13 @@ const COMMIT_RAIN_TILES = [
 
 const FINAL_GRASS_COLUMNS = 40;
 const FINAL_GRASS_ROWS = 20;
-const FINAL_GRASS_COLORS = [
-  "#f0f2f4",
-  "#e1f4e6",
-  "#bde8c8",
-  "#91d9a3",
-  "#68c581",
+const FINAL_GRASS_COLOR_TOKENS = [
+  "--grass-empty",
+  "--grass-lightest",
+  "--grass-light",
+  "--grass-medium",
+  "--grass-strong",
 ] as const;
-const FINAL_GRASS_HOVER_COLOR = FINAL_GRASS_COLORS[4];
 const FINAL_GRASS_LEVELS = Array.from(
   { length: FINAL_GRASS_COLUMNS * FINAL_GRASS_ROWS },
   (_, index) => {
@@ -101,6 +100,11 @@ function FinalGrassCanvas() {
     const canvasElement: HTMLCanvasElement = canvas;
     const copyElement: HTMLElement = copy;
     const drawingContext: CanvasRenderingContext2D = context;
+    const sectionStyles = getComputedStyle(section);
+    const grassColors = FINAL_GRASS_COLOR_TOKENS.map((token) =>
+      sectionStyles.getPropertyValue(token).trim(),
+    );
+    const grassHoverColor = grassColors.at(-1) ?? grassColors[0];
     const reducedMotionQuery = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     );
@@ -237,8 +241,8 @@ function FinalGrassCanvas() {
         }
 
         drawingContext.fillStyle = isHighlighted
-          ? FINAL_GRASS_HOVER_COLOR
-          : FINAL_GRASS_COLORS[level];
+          ? grassHoverColor
+          : grassColors[level];
         drawingContext.beginPath();
         drawingContext.roundRect(x, y, cellWidth, cellHeight, 4);
         drawingContext.fill();
@@ -542,6 +546,7 @@ export function GittyLanding() {
   );
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isWidgetLoading, setIsWidgetLoading] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollProgressRef = useRef<HTMLDivElement>(null);
   const initialGittyRef = useRef<HTMLDivElement>(null);
@@ -1042,6 +1047,7 @@ export function GittyLanding() {
     setUsername(value);
     setActiveUsername(null);
     setCopied(false);
+    setIsWidgetLoading(false);
     const normalizedUsername = value.trim();
 
     if (!normalizedUsername) {
@@ -1066,6 +1072,7 @@ export function GittyLanding() {
       setActiveUsername(null);
       setError(null);
       setCopied(false);
+      setIsWidgetLoading(false);
       return;
     }
 
@@ -1073,6 +1080,7 @@ export function GittyLanding() {
       setActiveUsername(null);
       setError("GitHub username을 다시 확인해 보라냥");
       setCopied(false);
+      setIsWidgetLoading(false);
       return;
     }
 
@@ -1080,6 +1088,7 @@ export function GittyLanding() {
     setActiveUsername(normalizedUsername);
     setError(null);
     setCopied(false);
+    setIsWidgetLoading(activeUsername !== normalizedUsername);
   }
 
   async function copyMarkdown() {
@@ -1146,16 +1155,38 @@ export function GittyLanding() {
 
           <div className="hero-stage" aria-live="polite">
             {widgetUrl ? (
-              <div className="widget-result">
-                <Image
-                  key={widgetUrl}
-                  className="widget-preview"
-                  src={`/api/widget?username=${encodeURIComponent(activeUsername ?? "")}`}
-                  alt={`${activeUsername}의 Gitty 위젯`}
-                  width={614}
-                  height={274}
-                  unoptimized
-                />
+              <div
+                className={`widget-result${isWidgetLoading ? " is-loading" : ""}`}
+                aria-busy={isWidgetLoading}
+              >
+                <div className="widget-preview-frame">
+                  <Image
+                    key={widgetUrl}
+                    className="widget-preview"
+                    src={`/api/widget?username=${encodeURIComponent(activeUsername ?? "")}`}
+                    alt={`${activeUsername}의 Gitty 위젯`}
+                    width={614}
+                    height={274}
+                    unoptimized
+                    onLoad={() => setIsWidgetLoading(false)}
+                    onError={() => setIsWidgetLoading(false)}
+                  />
+                  {isWidgetLoading ? (
+                    <div className="widget-loader" role="status">
+                      <div
+                        className="contribution-dots widget-loading-dots"
+                        aria-hidden="true"
+                      >
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </div>
+                      <p>Gitty를 만나러 가는 중...</p>
+                    </div>
+                  ) : null}
+                </div>
                 <div className="markdown-area">
                   <span>README에 추가하기</span>
                   <div className="markdown-copy">
@@ -1268,7 +1299,6 @@ export function GittyLanding() {
                 </div>
               <div className="feeding-visual" aria-hidden="true">
                 <div className="contribution-dots">
-                  <i />
                   <i />
                   <i />
                   <i />
