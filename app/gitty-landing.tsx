@@ -723,7 +723,7 @@ export function GittyLanding() {
     const reducedMotionQuery = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     );
-    const mobileLayoutQuery = window.matchMedia("(max-width: 640px)");
+    const horizontalLayoutQuery = window.matchMedia("(max-width: 900px)");
     let frameId: number | null = null;
     let trackStep = 0;
     let trackInset = 36;
@@ -744,12 +744,12 @@ export function GittyLanding() {
 
       const gap =
         Number.parseFloat(getComputedStyle(positiveTrackElement).gap) || 0;
-      const itemSize = mobileLayoutQuery.matches
+      const itemSize = horizontalLayoutQuery.matches
         ? firstPositiveItem.offsetWidth
         : firstPositiveItem.offsetHeight;
 
       trackStep = itemSize + gap;
-      trackInset = mobileLayoutQuery.matches ? 24 : 36;
+      trackInset = horizontalLayoutQuery.matches ? 24 : 36;
       updateTracks();
     }
 
@@ -823,7 +823,7 @@ export function GittyLanding() {
         return correction * easedProgress;
       }
 
-      if (mobileLayoutQuery.matches) {
+      if (horizontalLayoutQuery.matches) {
         const hungerViewportWidth =
           hungerTrackElement.parentElement?.clientWidth ?? 0;
         const positiveViewportWidth =
@@ -884,14 +884,14 @@ export function GittyLanding() {
     window.addEventListener("scroll", updateTracks, { passive: true });
     window.addEventListener("resize", measureTracks);
     reducedMotionQuery.addEventListener("change", updateTracks);
-    mobileLayoutQuery.addEventListener("change", measureTracks);
+    horizontalLayoutQuery.addEventListener("change", measureTracks);
     measureTracks();
 
     return () => {
       window.removeEventListener("scroll", updateTracks);
       window.removeEventListener("resize", measureTracks);
       reducedMotionQuery.removeEventListener("change", updateTracks);
-      mobileLayoutQuery.removeEventListener("change", measureTracks);
+      horizontalLayoutQuery.removeEventListener("change", measureTracks);
 
       if (frameId !== null) {
         cancelAnimationFrame(frameId);
@@ -970,13 +970,14 @@ export function GittyLanding() {
 
     function updateProgress() {
       const sectionTop = sectionElement.getBoundingClientRect().top;
+      const viewportHeight = window.innerHeight;
       const revealProgress = reducedMotionQuery.matches
         ? 1
         : Math.min(
             1,
             Math.max(
               0,
-              1 - sectionTop / (window.innerHeight * 0.5),
+              1 - sectionTop / (viewportHeight * 0.5),
             ),
           );
 
@@ -1258,22 +1259,22 @@ export function GittyLanding() {
           id="how-it-works"
           ref={worksSectionRef}
         >
+          <div className="commit-rain" aria-hidden="true">
+            {COMMIT_RAIN_TILES.map((tile, index) => (
+              <i
+                className={`commit-rain-tile commit-rain-level-${tile.level}`}
+                key={`${tile.left}-${index}`}
+                style={{
+                  left: `${tile.left}%`,
+                  width: `${tile.size}px`,
+                  height: `${tile.size}px`,
+                  animationDelay: `${tile.delay}s`,
+                  animationDuration: `${tile.duration}s`,
+                }}
+              />
+            ))}
+          </div>
           <div className="works-sticky">
-            <div className="commit-rain" aria-hidden="true">
-              {COMMIT_RAIN_TILES.map((tile, index) => (
-                <i
-                  className={`commit-rain-tile commit-rain-level-${tile.level}`}
-                  key={`${tile.left}-${index}`}
-                  style={{
-                    left: `${tile.left}%`,
-                    width: `${tile.size}px`,
-                    height: `${tile.size}px`,
-                    animationDelay: `${tile.delay}s`,
-                    animationDuration: `${tile.duration}s`,
-                  }}
-                />
-              ))}
-            </div>
             <div
               className="section-heading section-reveal"
               data-section-reveal
@@ -1446,8 +1447,10 @@ export function GittyLanding() {
               className="final-copy section-reveal"
               data-section-reveal
             >
-              <h2>이제, Gitty의 집사가 되어보세요.</h2>
-              <p>Gitty와 함께 GitHub 활동을 꾸준히 이어가 보세요.</p>
+              <div className="final-heading">
+                <h2>이제, Gitty의 집사가 되어보세요.</h2>
+                <p>Gitty와 함께 GitHub 활동을 꾸준히 이어가 보세요.</p>
+              </div>
               <a
                 className="primary-action"
                 href={GITHUB_REPOSITORY_URL}
