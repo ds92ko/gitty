@@ -42,7 +42,9 @@ function addTrackSentinels<T extends MoodState>(states: readonly T[]) {
   return first && last ? [last, ...states, first] : [];
 }
 
-const POSITIVE_TRACK_STATES = addTrackSentinels(POSITIVE_STATES);
+const POSITIVE_TRACK_STATES = addTrackSentinels(
+  [...POSITIVE_STATES].reverse(),
+);
 const HUNGER_TRACK_STATES = addTrackSentinels(HUNGER_STATES);
 
 interface MoodTrackProps {
