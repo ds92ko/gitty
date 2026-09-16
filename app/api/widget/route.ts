@@ -11,6 +11,8 @@ import { renderWidget } from "@/lib/gitty/render-widget";
 
 const WIDGET_CACHE_CONTROL =
   "public, max-age=0, s-maxage=900, stale-while-revalidate=3600";
+const WIDGET_CONTENT_SECURITY_POLICY =
+  "default-src 'none'; img-src data:; style-src 'unsafe-inline'";
 const GITHUB_USERNAME_PATTERN =
   /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
 
@@ -42,7 +44,7 @@ async function createWidgetResponse({
     headers: {
       "Cache-Control": WIDGET_CACHE_CONTROL,
       "Content-Length": Buffer.byteLength(svg).toString(),
-      "Content-Security-Policy": "default-src 'none'; img-src data:",
+      "Content-Security-Policy": WIDGET_CONTENT_SECURITY_POLICY,
       "Content-Type": "image/svg+xml; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
       "X-Gitty-State": state,

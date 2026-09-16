@@ -63,6 +63,12 @@ const WIDGET_LAYOUT = {
     },
   },
 } as const;
+const WIDGET_MOTION = {
+  catFloatDistance: 1,
+  catFloatDuration: 3,
+  catTiltAngle: 1,
+  catTiltDuration: 19,
+} as const;
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 const POSITIVE_STATES = new Set<WidgetCatState>([
   "normal",
@@ -225,12 +231,42 @@ export async function renderWidget({
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDGET_LAYOUT.width}" height="${WIDGET_LAYOUT.height}" viewBox="0 0 ${WIDGET_LAYOUT.width} ${WIDGET_LAYOUT.height}" role="img" aria-label="${escapedMessage}">
   <title>${escapedMessage}</title>
+  <style>
+    @keyframes gitty-cat-float {
+      0%, 100% { transform: translateY(${WIDGET_MOTION.catFloatDistance}px); }
+      50% { transform: translateY(-${WIDGET_MOTION.catFloatDistance}px); }
+    }
+    @keyframes gitty-cat-tilt {
+      0%, 17%, 21%, 68%, 73%, 100% { transform: rotate(0deg); }
+      18% { transform: rotate(-${WIDGET_MOTION.catTiltAngle}deg); }
+      19.4% { transform: rotate(${WIDGET_MOTION.catTiltAngle}deg); }
+      20.5% { transform: rotate(0deg); }
+      69% { transform: rotate(${WIDGET_MOTION.catTiltAngle}deg); }
+      70.2% { transform: rotate(-${WIDGET_MOTION.catTiltAngle}deg); }
+      71.3% { transform: rotate(0deg); }
+    }
+    .gitty-float {
+      animation: gitty-cat-float ${WIDGET_MOTION.catFloatDuration}s ease-in-out infinite;
+    }
+    .gitty-tilt {
+      animation: gitty-cat-tilt ${WIDGET_MOTION.catTiltDuration}s ease-in-out infinite;
+      transform-box: fill-box;
+      transform-origin: center bottom;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gitty-float, .gitty-tilt { animation: none; }
+    }
+  </style>
 ${bowlDefinitions}
   <rect x="${WIDGET_LAYOUT.borderInset}" y="${WIDGET_LAYOUT.borderInset}" width="${borderWidth}" height="${borderHeight}" rx="${WIDGET_LAYOUT.cornerRadius}" fill="${WIDGET_COLORS.backgroundWidget}" stroke="${WIDGET_COLORS.borderDefault}" />
   <image href="data:image/png;base64,${logo}" x="${WIDGET_LAYOUT.logo.x}" y="${WIDGET_LAYOUT.logo.y}" width="${WIDGET_LAYOUT.logo.width}" height="${WIDGET_LAYOUT.logo.height}" />
   <text x="${contentRight}" y="${WIDGET_LAYOUT.username.y}" text-anchor="end" fill="${WIDGET_COLORS.textMuted}" font-family="Arial, sans-serif" font-size="${WIDGET_LAYOUT.username.fontSize}">${usernameLabel}</text>
   <line x1="${WIDGET_LAYOUT.horizontalPadding}" y1="${WIDGET_LAYOUT.dividerY}" x2="${contentRight}" y2="${WIDGET_LAYOUT.dividerY}" stroke="${WIDGET_COLORS.borderMuted}" />
-  <image href="data:image/png;base64,${image}" x="${WIDGET_LAYOUT.cat.x}" y="${WIDGET_LAYOUT.dividerY}" width="${WIDGET_LAYOUT.cat.width}" height="${WIDGET_LAYOUT.cat.height}" />
+  <g class="gitty-float">
+    <g class="gitty-tilt">
+      <image class="gitty-cat" href="data:image/png;base64,${image}" x="${WIDGET_LAYOUT.cat.x}" y="${WIDGET_LAYOUT.dividerY}" width="${WIDGET_LAYOUT.cat.width}" height="${WIDGET_LAYOUT.cat.height}" />
+    </g>
+  </g>
   <path d="${WIDGET_LAYOUT.speechBubble.path}" fill="${WIDGET_COLORS.backgroundBubble}" stroke="${WIDGET_COLORS.borderDefault}" stroke-linejoin="round" />
   <text x="${WIDGET_LAYOUT.speechBubble.textX}" y="${WIDGET_LAYOUT.speechBubble.textY}" text-anchor="middle" dominant-baseline="middle" fill="${WIDGET_COLORS.textPrimary}" font-family="Arial, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif" font-size="${WIDGET_LAYOUT.speechBubble.fontSize}" font-weight="600">${escapedMessage}</text>
 ${activityMarkup}
