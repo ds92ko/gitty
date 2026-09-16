@@ -892,11 +892,19 @@ img {
 }
 
 .mood-column {
+  --mood-mask-fade: 9%;
+  --mood-edge-buffer: 8px;
   height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  mask-image: linear-gradient(to bottom, transparent, black 9%, black 91%, transparent);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--mask-solid) var(--mood-mask-fade),
+    var(--mask-solid) calc(100% - var(--mood-mask-fade)),
+    transparent
+  );
 }
 
 .mood-track {
@@ -1295,11 +1303,12 @@ img {
   }
 
   .mood-column {
+    --mood-mask-fade: 7%;
     mask-image: linear-gradient(
       to right,
       transparent,
-      var(--mask-solid) 7%,
-      var(--mask-solid) 93%,
+      var(--mask-solid) var(--mood-mask-fade),
+      var(--mask-solid) calc(100% - var(--mood-mask-fade)),
       transparent
     );
   }

@@ -1,65 +1,20 @@
 "use client";
 
-import { CAT_STATE_MESSAGES } from "@/lib/gitty/cat-message";
 import Lenis from "lenis";
 import Image from "next/image";
 import {
   type FormEvent,
-  type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { MeetSection } from "./meet-section";
 
 const GITHUB_REPOSITORY_URL = "https://github.com/ds92ko/gitty";
 const GITHUB_PROFILE_URL = "https://github.com/ds92ko";
 const WIDGET_ORIGIN = "https://gitty-widget.vercel.app";
 const GITHUB_USERNAME_PATTERN =
   /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-
-const POSITIVE_MARQUEE_STATES = [
-  "normal",
-  "coding",
-  "happy",
-  "cheering",
-  "excited",
-  "proud",
-  "love",
-] as const;
-
-const HUNGER_MARQUEE_STATES = [
-  "waiting",
-  "nervous",
-  "crying",
-  "angry",
-  "tired",
-  "burned_out",
-  "sleeping",
-] as const;
-
-type MoodState =
-  | (typeof POSITIVE_MARQUEE_STATES)[number]
-  | (typeof HUNGER_MARQUEE_STATES)[number];
-
-function addMoodTrackSentinels<T extends MoodState>(
-  states: readonly T[],
-) {
-  const first = states[0];
-  const last = states.at(-1);
-
-  if (!first || !last) {
-    return [];
-  }
-
-  return [last, ...states, first];
-}
-
-const POSITIVE_TRACK_STATES = addMoodTrackSentinels(
-  POSITIVE_MARQUEE_STATES,
-);
-const HUNGER_TRACK_STATES = addMoodTrackSentinels(
-  HUNGER_MARQUEE_STATES,
-);
 
 const COMMIT_RAIN_TILES = [
   { left: 4, size: 14, duration: 15, delay: -3, level: 1 },
@@ -579,70 +534,6 @@ export function GittyLanding() {
   const initialGittyRef = useRef<HTMLDivElement>(null);
   const worksSectionRef = useRef<HTMLElement>(null);
   const storyStepRefs = useRef<Array<HTMLElement | null>>([]);
-  const meetSectionRef = useRef<HTMLElement>(null);
-  const hungerTrackRef = useRef<HTMLDivElement>(null);
-  const positiveTrackRef = useRef<HTMLDivElement>(null);
-  const moodTooltipRef = useRef<HTMLDivElement>(null);
-  const [moodTooltip, setMoodTooltip] = useState<{
-    state: MoodState;
-    visible: boolean;
-  }>({
-    state: "normal",
-    visible: false,
-  });
-
-  function positionMoodTooltip(clientX: number, clientY: number) {
-    const tooltip = moodTooltipRef.current;
-
-    if (!tooltip) {
-      return;
-    }
-
-    const bubble = tooltip.firstElementChild as HTMLElement | null;
-    const bubbleWidth = bubble?.offsetWidth ?? 0;
-    const bubbleHeight = bubble?.offsetHeight ?? 0;
-    const gap = 16;
-    const viewportPadding = 16;
-    const left = Math.min(
-      Math.max(viewportPadding, clientX - bubbleWidth / 2),
-      window.innerWidth - bubbleWidth - viewportPadding,
-    );
-    const top = Math.max(
-      viewportPadding,
-      clientY - bubbleHeight - gap,
-    );
-
-    tooltip.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-  }
-
-  function handleMoodPointerEnter(
-    event: ReactPointerEvent<HTMLImageElement>,
-    state: MoodState,
-  ) {
-    if (event.pointerType !== "mouse") {
-      return;
-    }
-
-    const { clientX, clientY } = event;
-    setMoodTooltip({ state, visible: true });
-    requestAnimationFrame(() => positionMoodTooltip(clientX, clientY));
-  }
-
-  function handleMoodPointerMove(
-    event: ReactPointerEvent<HTMLImageElement>,
-  ) {
-    if (event.pointerType === "mouse") {
-      positionMoodTooltip(event.clientX, event.clientY);
-    }
-  }
-
-  function handleMoodPointerLeave(
-    event: ReactPointerEvent<HTMLImageElement>,
-  ) {
-    if (event.pointerType === "mouse") {
-      setMoodTooltip((current) => ({ ...current, visible: false }));
-    }
-  }
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -803,191 +694,6 @@ export function GittyLanding() {
       if (frameId !== null) {
         cancelAnimationFrame(frameId);
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    const section = meetSectionRef.current;
-    const hungerTrack = hungerTrackRef.current;
-    const positiveTrack = positiveTrackRef.current;
-    const moodColumns = hungerTrack?.closest<HTMLElement>(".mood-columns");
-
-    if (!section || !hungerTrack || !positiveTrack || !moodColumns) {
-      return;
-    }
-
-    const sectionElement = section;
-    const hungerTrackElement = hungerTrack;
-    const positiveTrackElement = positiveTrack;
-    const moodColumnsElement = moodColumns;
-    const reducedMotionQuery = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    );
-    const horizontalLayoutQuery = window.matchMedia("(max-width: 900px)");
-    let frameId: number | null = null;
-    let trackStep = 0;
-    let trackInset = 0;
-
-    function resetTracks() {
-      hungerTrackElement.style.removeProperty("transform");
-      positiveTrackElement.style.removeProperty("transform");
-    }
-
-    function measureTracks() {
-      const firstPositiveItem =
-        positiveTrackElement.firstElementChild as HTMLElement | null;
-
-      if (!firstPositiveItem) {
-        trackStep = 0;
-        return;
-      }
-
-      const gap =
-        Number.parseFloat(getComputedStyle(positiveTrackElement).gap) || 0;
-      const itemSize = horizontalLayoutQuery.matches
-        ? firstPositiveItem.offsetWidth
-        : firstPositiveItem.offsetHeight;
-      const viewportSize = horizontalLayoutQuery.matches
-        ? (positiveTrackElement.parentElement?.clientWidth ?? 0)
-        : (positiveTrackElement.parentElement?.clientHeight ?? 0);
-      const maskFadeRatio = horizontalLayoutQuery.matches ? 0.07 : 0.09;
-
-      trackStep = itemSize + gap;
-      trackInset = Math.ceil(viewportSize * maskFadeRatio) + 8;
-      updateTracks();
-    }
-
-    function drawTracks() {
-      frameId = null;
-      const sectionTop = sectionElement.getBoundingClientRect().top;
-      const revealProgress = reducedMotionQuery.matches
-        ? 1
-        : Math.min(
-            1,
-            Math.max(
-              0,
-              1 - sectionTop / (window.innerHeight * 0.5),
-            ),
-          );
-
-      moodColumnsElement.style.opacity = String(revealProgress);
-
-      if (reducedMotionQuery.matches) {
-        resetTracks();
-        return;
-      }
-
-      const scrollBeforeFinalSection = Math.max(
-        sectionElement.offsetHeight - window.innerHeight * 2,
-        0,
-      );
-      const scrollOffset = Math.min(
-        scrollBeforeFinalSection,
-        Math.max(0, -sectionElement.getBoundingClientRect().top),
-      );
-      const progress = scrollBeforeFinalSection
-        ? scrollOffset / scrollBeforeFinalSection
-        : 0;
-
-      function getHalfStepCorrection(relativePosition: number) {
-        if (!trackStep) {
-          return 0;
-        }
-
-        const currentPhase =
-          ((relativePosition % trackStep) + trackStep) % trackStep;
-        return trackStep / 2 - currentPhase;
-      }
-
-      function getPositivePosition(
-        hungerTravel: number,
-        positiveTravel: number,
-      ) {
-        const start =
-          trackInset -
-          trackStep -
-          positiveTravel +
-          getHalfStepCorrection(-positiveTravel);
-        const end =
-          trackInset -
-          trackStep +
-          getHalfStepCorrection(hungerTravel);
-
-        return start + (end - start) * progress;
-      }
-
-      if (horizontalLayoutQuery.matches) {
-        const hungerViewportWidth =
-          hungerTrackElement.parentElement?.clientWidth ?? 0;
-        const positiveViewportWidth =
-          positiveTrackElement.parentElement?.clientWidth ?? 0;
-        const hungerTravel = Math.max(
-          hungerTrackElement.scrollWidth -
-            trackStep * 2 -
-            hungerViewportWidth +
-            trackInset * 2,
-          0,
-        );
-        const positiveTravel = Math.max(
-          positiveTrackElement.scrollWidth -
-            trackStep * 2 -
-            positiveViewportWidth +
-            trackInset * 2,
-          0,
-        );
-
-        hungerTrackElement.style.transform = `translate3d(${trackInset - trackStep - hungerTravel * progress}px, 0, 0)`;
-        positiveTrackElement.style.transform = `translate3d(${getPositivePosition(hungerTravel, positiveTravel)}px, 0, 0)`;
-        return;
-      }
-
-      const hungerViewportHeight =
-        hungerTrackElement.parentElement?.clientHeight ?? 0;
-      const positiveViewportHeight =
-        positiveTrackElement.parentElement?.clientHeight ?? 0;
-      const hungerTravel = Math.max(
-        hungerTrackElement.scrollHeight -
-          trackStep * 2 -
-          hungerViewportHeight +
-          trackInset * 2,
-        0,
-      );
-      const positiveTravel = Math.max(
-        positiveTrackElement.scrollHeight -
-          trackStep * 2 -
-          positiveViewportHeight +
-          trackInset * 2,
-        0,
-      );
-
-      hungerTrackElement.style.transform = `translate3d(0, ${trackInset - trackStep - hungerTravel * progress}px, 0)`;
-      positiveTrackElement.style.transform = `translate3d(0, ${getPositivePosition(hungerTravel, positiveTravel)}px, 0)`;
-    }
-
-    function updateTracks() {
-      if (frameId === null) {
-        frameId = requestAnimationFrame(drawTracks);
-      }
-    }
-
-    window.addEventListener("scroll", updateTracks, { passive: true });
-    window.addEventListener("resize", measureTracks);
-    reducedMotionQuery.addEventListener("change", updateTracks);
-    horizontalLayoutQuery.addEventListener("change", measureTracks);
-    measureTracks();
-
-    return () => {
-      window.removeEventListener("scroll", updateTracks);
-      window.removeEventListener("resize", measureTracks);
-      reducedMotionQuery.removeEventListener("change", updateTracks);
-      horizontalLayoutQuery.removeEventListener("change", measureTracks);
-
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-
-      resetTracks();
-      moodColumnsElement.style.removeProperty("opacity");
     };
   }, []);
 
@@ -1480,92 +1186,7 @@ export function GittyLanding() {
           </div>
         </section>
 
-        <section className="meet-section" ref={meetSectionRef}>
-          <div className="meet-sticky">
-            <div className="meet-layout">
-              <div
-                className="section-heading meet-copy section-reveal"
-                data-section-reveal
-              >
-                <p className="eyebrow">MEET GITTY</p>
-                <h2>
-                  툴툴대고 까칠한 녀석,
-                  <br />
-                  알고 보면 누구보다 집사바라기
-                </h2>
-              </div>
-              <div className="mood-columns">
-                <div className="mood-column">
-                  <div className="mood-track hunger-track" ref={hungerTrackRef}>
-                    {HUNGER_TRACK_STATES.map((state, index) => {
-                      const isSentinel =
-                        index === 0 ||
-                        index === HUNGER_TRACK_STATES.length - 1;
-
-                      return (
-                        <Image
-                          key={`${state}-${index}`}
-                          src={`/cats/${state}.png`}
-                          alt={isSentinel ? "" : `${state} Gitty`}
-                          data-mood-state={state}
-                          data-mood-sentinel={isSentinel ? "" : undefined}
-                          width={260}
-                          height={260}
-                          onPointerEnter={(event) =>
-                            handleMoodPointerEnter(event, state)
-                          }
-                          onPointerMove={handleMoodPointerMove}
-                          onPointerLeave={handleMoodPointerLeave}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="mood-column">
-                  <div
-                    className="mood-track positive-track"
-                    ref={positiveTrackRef}
-                  >
-                    {POSITIVE_TRACK_STATES.map((state, index) => {
-                      const isSentinel =
-                        index === 0 ||
-                        index === POSITIVE_TRACK_STATES.length - 1;
-
-                      return (
-                        <Image
-                          key={`${state}-${index}`}
-                          src={`/cats/${state}.png`}
-                          alt={isSentinel ? "" : `${state} Gitty`}
-                          data-mood-state={state}
-                          data-mood-sentinel={isSentinel ? "" : undefined}
-                          width={260}
-                          height={260}
-                          onPointerEnter={(event) =>
-                            handleMoodPointerEnter(event, state)
-                          }
-                          onPointerMove={handleMoodPointerMove}
-                          onPointerLeave={handleMoodPointerLeave}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div
-          className="mood-tooltip"
-          ref={moodTooltipRef}
-          aria-hidden="true"
-        >
-          <span
-            className={`mood-tooltip-bubble${moodTooltip.visible ? " is-visible" : ""}`}
-          >
-            {CAT_STATE_MESSAGES[moodTooltip.state]}
-          </span>
-        </div>
+        <MeetSection />
 
         <section className="final-section">
           <FinalGrassCanvas />
