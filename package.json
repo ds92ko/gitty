@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/validate-widget-assets.mjs && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:widget-assets": "node scripts/validate-widget-assets.mjs"
   },
   "dependencies": {
     "next": "16.3.4",
