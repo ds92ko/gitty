@@ -1038,8 +1038,8 @@ img {
 .final-section {
   position: relative;
   z-index: 20;
-  min-height: 100svh;
-  margin-top: -100svh;
+  min-height: 100dvh;
+  margin-top: -100dvh;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
