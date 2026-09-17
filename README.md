@@ -149,3 +149,10 @@ http://localhost:3000
 ```text
 http://localhost:3000/api/widget?username=YOUR_USERNAME
 ```
+
+## Support Gitty
+
+Gitty와의 만남이 즐거웠다면 Star로 응원해주세요!
+여러분의 응원과 함께 Gitty도 계속 자라갑니다.
+
+Made with 💚 by [@ds92ko](https://github.com/ds92ko)
