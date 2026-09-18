@@ -1,5 +1,5 @@
 const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
-const GITHUB_CONTRIBUTIONS_REVALIDATE_SECONDS = 15 * 60;
+export const GITHUB_CONTRIBUTIONS_REVALIDATE_SECONDS = 15 * 60;
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 const CONTRIBUTION_HISTORY_DAYS = 365;
 
@@ -31,7 +31,7 @@ function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function getContributionDateRange(now: Date) {
+export function getContributionDateRange(now: Date) {
   const today = Date.UTC(
     now.getUTCFullYear(),
     now.getUTCMonth(),

@@ -63,3 +63,21 @@ export function parseContributionCalendar(
 
   return { userCreatedAt, days };
 }
+
+export function includePublicContributionDays(
+  calendar: ContributionCalendar,
+  publicActiveDays: ReadonlySet<string>,
+): ContributionCalendar {
+  if (publicActiveDays.size === 0) {
+    return calendar;
+  }
+
+  return {
+    ...calendar,
+    days: calendar.days.map((day) =>
+      day.contributionCount === 0 && publicActiveDays.has(day.date)
+        ? { ...day, contributionCount: 1 }
+        : day,
+    ),
+  };
+}

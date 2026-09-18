@@ -1,5 +1,9 @@
 import { fetchContributionCalendar } from "@/lib/github/fetch-contribution-calendar";
-import { parseContributionCalendar } from "@/lib/github/parse-contribution-calendar";
+import { fetchPublicContributionDays } from "@/lib/github/fetch-public-contribution-days";
+import {
+  includePublicContributionDays,
+  parseContributionCalendar,
+} from "@/lib/github/parse-contribution-calendar";
 import { analyzeGitHubActivity } from "@/lib/gitty/analyze-github-activity";
 import type { WidgetCatState } from "@/lib/gitty/cat-message";
 import {
@@ -64,11 +68,21 @@ export async function GET(request: Request) {
   if (validUsername) {
     try {
       const now = new Date();
-      const response = await fetchContributionCalendar(
-        validUsername,
-        now,
+      const [response, publicActiveDays] = await Promise.all([
+        fetchContributionCalendar(validUsername, now),
+        fetchPublicContributionDays(validUsername, now).catch((error) => {
+          console.error(
+            "Failed to fetch publicly visible GitHub contribution days",
+            error,
+          );
+
+          return new Set<string>();
+        }),
+      ]);
+      const calendar = includePublicContributionDays(
+        parseContributionCalendar(response),
+        publicActiveDays,
       );
-      const calendar = parseContributionCalendar(response);
       const currentActivity = analyzeGitHubActivity(calendar, now);
       const previousDate = new Date(now);
 
